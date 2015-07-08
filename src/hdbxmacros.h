@@ -14,9 +14,7 @@
 
 #define pwarn(x, args...) do { if(getenv("HDBEXTRACTOR_PRINT")) {printf("\e[1;33m* \e[0;4mwarning\e[0m: "), printf(x, ##args), printf("\n"); } }while(0)
 
-#define perr(x, args...) do {  if(!getenv("HDBEXTRACTOR_NOPRINT_ERRORS")) {fprintf(stderr, "\e[1;31m* \e[0;4merror\e[0m: ");  \
-    printf(x, ##args); \
-    printf("\n");} }while(0)
+#define perr(x, args...) do {  if(!getenv("HDBEXTRACTOR_NOPRINT_ERRORS")) {fprintf(stderr, "\e[1;31m* \e[0;4merror\e[0m: "); printf(x, ##args); printf("\n");} }while(0)
 
 #define pfatal(x, args...) do {  if(!getenv("HDBEXTRACTOR_NOPRINT_ERRORS")) {fprintf(stderr, "\e[1;31m!!! \e[0;4merror\e[0m: "); printf(x, ##args); printf("\n"); exit(EXIT_FAILURE); } }while(0)
 

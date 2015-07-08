@@ -17,15 +17,11 @@ public:
     MyHdbExtractorImpl(const char *dbuser, const char *dbpass,
                        const char *dbhost, const char *dbnam);
 
-    virtual ~MyHdbExtractorImpl();
-
     void getData(std::vector<std::string> sources, const char* start_date, const char *stop_date);
 
-    virtual void onSourceProgressUpdate(const char *name, double percent);
+    virtual void onSourceProgressUpdate(const char *name, int step, int totalSteps);
 
-    virtual void onExtractionFinished(int totalRows, double elapsed);
-
-    virtual void onSourceExtractionFinished(const char* name, int totalRows, double elapsed);
+    virtual void onSourceExtracted(const char * name, int sourceStep, int sourcesTotal, double elapsed);
 
     Hdbextractor* getHdbExtractor() const { return mExtractor; }
 

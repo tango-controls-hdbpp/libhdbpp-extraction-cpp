@@ -5,32 +5,15 @@
 #include <stdlib.h>
 #include "hdbxmacros.h"
 
-/** \brief The class constructor.
- *
- * No paramters are required to instantiate an object of this type.
- *
- * @see read
- */
 ConfigurationParser::ConfigurationParser()
 {
 
 
 }
 
-/** \brief Read a configuration file and insert into the given map the detected key/value pairs.
- *
- * @return if read is successful, false otherwise.
- *
- * @param filepath the full path to the configuration file
- * @param params a reference to a std::map<std::string, std::string> where the pairs are inserted by read.
- *
- * \par Note
- * This method does not clear the map passed as input argument before parsing the configuration file.
- *
- */
 bool ConfigurationParser::read(const char *filepath, std::map<std::string, std::string>& params)
 {
-    bool ret = false;
+    bool res = false;
     errno = 0;
     FILE *fp = fopen(filepath, "r");
     if(fp == NULL)
@@ -50,9 +33,6 @@ bool ConfigurationParser::read(const char *filepath, std::map<std::string, std::
         size_t len = 0;
         ssize_t read;
         int conf_len;
-        ret = true;
-        /* reset error */
-        strncpy(m_error, "", 2);
 
         while ((read = getline(&line, &len, fp)) != -1)
         {
@@ -107,15 +87,9 @@ bool ConfigurationParser::read(const char *filepath, std::map<std::string, std::
 
         fclose(fp);
     }
-    return ret;
+
 }
 
-/** \brief Returns the error message according to the last ConfigurationParser::read failure reason
- *
- * @return The last error message, if read returns false
- *
- * @see read
- */
 const char *ConfigurationParser::getError() const
 {
     return m_error;

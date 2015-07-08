@@ -1,38 +1,24 @@
 #include "hdbextractor.h"
 #include "hdbextractorprivate.h"
-#include "mysql/mysqlconnection.h"
+#include "mysqlconnection.h"
 #include "result.h"
 #include "hdbxmacros.h"
-#include "hdb/mysqlhdbschema.h"
-#include "hdbpp/mysqlhdbppschema.h"
+#include "hdb/src/mysqlhdbschema.h"
+#include "hdbpp/src/mysqlhdbppschema.h"
 #include "hdbextractorlistener.h"
-#include "hdbxsettings.h"
+#include "queryconfiguration.h"
 #include "timeinterval.h"
 
 #include <string.h>
 
-/** \brief the HdbExtractor destructor.
- *
- * Deletes private data after closing the connection.
- * Private data deletion implies freeing resources for connection and dbschema,
- * which are allocated by Hdbextractor, but not freeing HdbXSettings, which is
- * set by clients.
- */
+
 Hdbextractor::~Hdbextractor()
 {
-    printf("\e[1;31m~HdbExtractor: connection %p schema %p\e[0m\n", d_ptr->connection,
-           d_ptr->dbschema);
     if(d_ptr->connection != NULL)
     {
-        printf("~HdbExtractor: closing db connection\n");
+        pinfo("~HdbExtractor: closing db connection");
         d_ptr->connection->close();
     }
-    if(d_ptr->dbschema)
-        delete d_ptr->dbschema;
-    if(d_ptr->connection)
-        delete d_ptr->connection;
-    /* Data is deleted by the HdbExtractorPrivate destructor */
-    delete d_ptr;
 }
 
 Hdbextractor::DbType Hdbextractor::dbType() const
@@ -85,9 +71,9 @@ void Hdbextractor::setDbType(DbType dbt)
  *  <li>void HdbExtractorListener::onFinished(int totalRows); </li>
  *  </ul>
  *
- *  Calling setUpdateProgressPercent with an integer value greater than 0 determines whether onProgressUpdate
+ *  Calling setUpdateProgressStep with an integer value greater than 0 determines whether onProgressUpdate
  *  is called or not in your HdbExtractorListener implementation. By default, it is not called
- *  (the method updateProgressPercent returns -1) and
+ *  (the method updateProgressStep returns -1) and
  *  you will be notified that the fetch has been completed when your implementation of the
  *  onFinished method is invoked.
  *  At that time, you can retrieve the actual data as a whole by calling get.
@@ -99,7 +85,7 @@ void Hdbextractor::setDbType(DbType dbt)
  *  (through onProgressUpdate)
  *
  *  \note The HdbExtractorListener::onProgressUpdate is called according to the number configured with
- *  Hdbextractor::setUpdateProgressPercent but also when the last bulk of data is available, even if its number of
+ *  Hdbextractor::setUpdateProgressStep but also when the last bulk of data is available, even if its number of
  *  rows is less than the configured value.
  *
  *  Obtaining data with the Hdbextractor::get method is <em>thread safe</em>.
@@ -120,7 +106,7 @@ Hdbextractor::Hdbextractor(HdbExtractorListener *hdbxlistener) : ResultListener(
     d_ptr->dbschema = NULL;
     d_ptr->dbType = DBUNDEFINED;
     d_ptr->hdbXListenerI = hdbxlistener;
-    d_ptr->hdbxSettings = NULL;
+    d_ptr->queryConfiguration = NULL;
     /* by default, trigger data available on listener only when data fetch is complete */
     d_ptr->updateEveryRows = -1;
 }
@@ -146,19 +132,16 @@ bool Hdbextractor::connect(DbType dbType, const char *host,
         pinfo("HdbExtractor: connected: %d host %s  db %s user %s passwd %s", isConnected(), host, db, user, passwd);
         break;
     default:
-        snprintf(d_ptr->errorMessage, MAXERRORLEN, "HdbExtractor: connect: database type unsupported: %d", dbType);
+        pfatal("HdbExtractor: connect: database type unsupported: %d", dbType);
         break;
     }
 
     /* set the desired schema and initialize DbSchema */
-    if(success)
-        setDbType(dbType);
-
-    if(!success && d_ptr->connection != NULL)
-        strncpy(d_ptr->errorMessage, d_ptr->connection->getError(), MAXERRORLEN);
+    setDbType(dbType);
 
     if(!success)
-        perr("%s", d_ptr->errorMessage);
+        strncpy(d_ptr->errorMessage, d_ptr->connection->getError(), MAXERRORLEN);
+
     return success;
 }
 
@@ -202,19 +185,19 @@ bool  Hdbextractor::hasError() const
  *
  * @see XVariant
  * @see get
- * @see setUpdateProgressPercent
+ * @see setUpdateProgressStep
  *
  * @return true if the data fetch was successful, false otherwise.
  *
  * \par Query options.
- * See setHdbXSettings and the HdbXSettings object to see what options can be
+ * See setQueryConfiguration and the QueryConfiguration object to see what options can be
  * applied to the database queries. For example, it is possible to choose the desired behaviour
  * when no data is available between start_date and stop_date.
  *
  * If this call was not successful, you can call getErrorMessage to get the error message
  *
  * @see getErrorMessage
- * @see setHdbXSettings
+ * @see setQueryConfiguration
  *
  */
 bool Hdbextractor::getData(const char *source,
@@ -226,16 +209,14 @@ bool Hdbextractor::getData(const char *source,
     printf("HdbExtractor.getData %s %s %s\n", source, start_date, stop_date);
     if(d_ptr->connection != NULL && d_ptr->dbschema != NULL && d_ptr->connection->isConnected())
     {
-        if(d_ptr->hdbxSettings != NULL)
-            d_ptr->dbschema->setHdbXSettings(d_ptr->hdbxSettings);
+        if(d_ptr->queryConfiguration != NULL)
+            d_ptr->dbschema->setQueryConfiguration(d_ptr->queryConfiguration);
         success = d_ptr->dbschema->getData(source, start_date, stop_date,
                                            d_ptr->connection, d_ptr->updateEveryRows);
     }
     /* error message, if necessary */
-    if(!success && d_ptr->dbschema != NULL)
+    if(!success)
         snprintf(d_ptr->errorMessage, MAXERRORLEN, "Hdbextractor.getData: %s", d_ptr->dbschema->getError());
-    else if(!d_ptr->dbschema || !d_ptr->connection)
-        snprintf(d_ptr->errorMessage, MAXERRORLEN, "Hdbextractor.getData: connection/schema not initialized");
 
     return success;
 }
@@ -250,12 +231,12 @@ bool Hdbextractor::getData(const char *source,
  * If this call was not successful, you can call getErrorMessage to get the error message
  *
  * \par Query options.
- * See setHdbXSettings and the HdbXSettings object to see what options can be
+ * See setQueryConfiguration and the QueryConfiguration object to see what options can be
  * applied to the database queries. For example, it is possible to choose the desired behaviour
  * when no data is available between start_date and stop_date.
  *
  * @see getErrorMessage
- * @see setHdbXSettings
+ * @see setQueryConfiguration
  */
 bool Hdbextractor::getData(const std::vector<std::string> sources,
                            const char *start_date,
@@ -266,22 +247,17 @@ bool Hdbextractor::getData(const std::vector<std::string> sources,
 
     if(d_ptr->connection != NULL && d_ptr->dbschema != NULL && d_ptr->connection->isConnected())
     {
-        if(d_ptr->hdbxSettings != NULL)
-            d_ptr->dbschema->setHdbXSettings(d_ptr->hdbxSettings);
+        if(d_ptr->queryConfiguration != NULL)
+            d_ptr->dbschema->setQueryConfiguration(d_ptr->queryConfiguration);
 
-        success = d_ptr->dbschema->getData(sources, start_date, stop_date,
-                                           d_ptr->connection, d_ptr->updateEveryRows);
-
-//        for(size_t i = 0; i < sources.size(); i++)
-//        {
-//            printf("HdbExtractor.getData %s %s %s\n", sources.at(i).c_str(), start_date, stop_date);
-//            success = d_ptr->dbschema->getData(sources.at(i).c_str(), start_date, stop_date,
-//                                               d_ptr->connection, d_ptr->updateEveryRows, i, sources.size());
-//        //    if(!success)
-//        //        break;
-//            if(!success)
-//                printf("\e[1;31mHdbExtractor.getData: unsuccessful fetch but continue!\e[0m\n");
-//        }
+        for(size_t i = 0; i < sources.size(); i++)
+        {
+            printf("HdbExtractor.getData %s %s %s\n", sources.at(i).c_str(), start_date, stop_date);
+            success = d_ptr->dbschema->getData(sources.at(i).c_str(), start_date, stop_date,
+                                               d_ptr->connection, d_ptr->updateEveryRows);
+            if(!success)
+                break;
+        }
     }
     /* error message, if necessary */
     if(!success)
@@ -355,99 +331,53 @@ bool Hdbextractor::isConnected() const
  * @return the number of extracted rows determining the frequency of the onProgressUpdate invocation
  *
  * @see onProgressUpdate
- * @see setUpdateProgressPercent to set the current step value
- *
- * If the value of this property is less than or equal to 0, then the update steps are
- * automatically set to receive updates every 10% of the total rows.
+ * @see setUpdateProgressStep to set the current step value
  */
-int Hdbextractor::updateProgressPercent()
+int Hdbextractor::updateProgressStep()
 {
     return d_ptr->updateEveryRows;
 }
 
-/** \brief Returns the HdbXSettings currently set, if any, or NULL if none has been set.
- *
- * @see setHdbXSettings
- */
-HdbXSettings *Hdbextractor::getHdbXSettings() const
-{
-    return d_ptr->hdbxSettings;
-}
-
-void Hdbextractor::cancelExtraction()
-{
-    if(d_ptr->dbschema)
-        d_ptr->dbschema->cancel();
-}
-
-bool Hdbextractor::extractionIsCancelled() const
-{
-    return d_ptr->dbschema && d_ptr->dbschema->isCancelled();
-}
-
 /** \brief This method allows to configure various options before querying the database
  *
- * @param qc The HdbXSettings object with the desired options set.
+ * @param qc The QueryConfiguration object with the desired options set.
  *
  * This method is used to configure the way data is fetched by getData.
  *
- * \par Important note.
- * The ownership of the HdbXSettings passed as parameter is passed to the Hdbextractor.
- * Its lifetime is tied to the Hdbextractor lifetime. In other words, you <strong>must not</strong>
- * delete it. It's deleted upon Hdbextractor's destruction.
- * <br/>If you <strong>replace</strong> the current HdbXSettings with another one,
- * <strong>the current one</strong> is deleted for you in this method.
- *
- * @see HdbXSettings
+ * @see QueryConfiguration
  * @see getData
  */
-void Hdbextractor::setHdbXSettings(HdbXSettings *qc)
+void Hdbextractor::setQueryConfiguration(QueryConfiguration *qc)
 {
-    if(d_ptr->hdbxSettings) /* delete current configuration */
-    {
-        printf("\e[1;31mDELETING hdbXSettings in hdbextractor\e[0m\n");
-        delete d_ptr->hdbxSettings;
-    }
-    d_ptr->hdbxSettings = qc;
+    d_ptr->queryConfiguration = qc;
 }
 
-/** \brief set the percentage of rows processed over total after that
- *  a progress update is triggered on the listener.
+/** \brief set the number of rows after which a progress update must be triggered on the listener.
  *
- * @param percent tells to update the listener about the data processing progress, expressed
- *        in percentage over the total number of rows fetched.
- *
- * \par Special values
- * A value of 0 implies a default 10 %
- * A negative value disables the progress update
+ * @param numRows every numRows onProgressUpdate is invoked
  *
  * @see onProgressUpdate
- * @see updateProgressPercent to get the current step value
+ * @see updateProgressStep to get the current step value
  */
-void Hdbextractor::setUpdateProgressPercent(int percent)
+void Hdbextractor::setUpdateProgressStep(int numRows)
 {
-    d_ptr->updateEveryRows = percent;
+    d_ptr->updateEveryRows = numRows;
 }
 
 /** \brief Implements ResultListener::onProgressUpdate interface
  *
  */
-void Hdbextractor::onProgressUpdate(const char *name, double percent)
+void Hdbextractor::onProgressUpdate(const char *name, int step, int total)
 {
-    d_ptr->hdbXListenerI->onSourceProgressUpdate(name, percent);
+    d_ptr->hdbXListenerI->onSourceProgressUpdate(name, step, total);
 }
 
 /** \brief Implements ResultListener::onFinished interface
  *
  */
-void Hdbextractor::onFinished(int totalRows, double elapsed)
+void Hdbextractor::onFinished(const char *name, int sourceStep, int totalSources, double elapsed)
 {
-    d_ptr->hdbXListenerI->onExtractionFinished(totalRows, elapsed);
-}
-
-void Hdbextractor::onSourceExtracted(const char *source, int totalRows, double elapsed)
-{
-    d_ptr->hdbXListenerI->onSourceExtractionFinished(source, totalRows, elapsed);
+    d_ptr->hdbXListenerI->onSourceExtracted(name, sourceStep, totalSources, elapsed);
 }
 
 

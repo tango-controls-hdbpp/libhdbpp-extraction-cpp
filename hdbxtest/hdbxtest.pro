@@ -3,15 +3,18 @@ CONFIG += console
 CONFIG -= app_bundle
 CONFIG -= qt
 
+
+
 QMAKE_CXXFLAGS += -std=gnu++98
+
 
 SOURCES += main.cpp \
     myhdbextractorimpl.cpp
 
-INCLUDEPATH += ../src ../src/db
+INCLUDEPATH += ../src ../db/src
 
 
-LIBS += -L../src/.libs -lhdbextractor++
+LIBS += -L.. -lhdbextractor++
 
 HEADERS += \
     myhdbextractorimpl.h
