@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.60])
-AC_INIT([hdbextractor], [0.91.0], [giacomo.strangolino@elettra.trieste.it])
+AC_INIT([hdbextractor], [0.94.0], [giacomo.strangolino@elettra.trieste.it])
 AC_CONFIG_SRCDIR([src/hdbpp/mysqlhdbppschema.h])
 
 
@@ -17,12 +17,12 @@ AC_CONFIG_SRCDIR([src/hdbpp/mysqlhdbppschema.h])
 
 # Here are a set of rules to help you update your library version information:
 
-AC_SUBST([HDBX_VERSION], [0:93:0])
+AC_SUBST([HDBX_VERSION], [0:94:0])
 
 ##
 ## Actually, we use revision in src/Makefile.am
 ##
-AC_SUBST([HDBX_REVISION], [0.93.0])
+AC_SUBST([HDBX_REVISION], [0.94.0])
 
 # AC_CONFIG_HEADERS([config.h])
 
@@ -32,8 +32,8 @@ LT_INIT
 
 AM_INIT_AUTOMAKE(foreign subdir-objects)
 
-AC_CONFIG_MACRO_DIR([m4])
 # AC_CONFIG_MACRO_DIRS([m4])
+AC_CONFIG_MACRO_DIRS([m4])
 
 
 # Checks for programs.
@@ -58,6 +58,9 @@ AC_CHECK_HEADERS([float.h limits.h stdlib.h string.h strings.h sys/time.h unistd
 
 # Checks for typedefs, structures, and compiler characteristics.
 # AC_CHECK_HEADER_STDBOOL
+
+# AX_CXX_COMPILE_STDCXX_11([],[optional])
+
 AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
 
@@ -82,7 +85,7 @@ DX_PS_FEATURE(OFF)
 ##
 DX_INIT_DOXYGEN([$PACKAGE_NAME],[Doxyfile.in],[doc])
 
-AX_CHECK_MYSQL([no],[yes],[5.0],[yes])
+AX_CHECK_MYSQL([no],[no],[5.0],[no])
 # AX_SOURCE_MYSQL()
 # AX_CHECK_MYSQL_INSTALL([ROOT-DIR],[IF-FOUND],[IF-NOT-FOUND])
 
@@ -93,7 +96,7 @@ AX_SWIG_MULTI_MODULE_SUPPORT
 AX_SWIG_PYTHON
 SWIG_ENABLE_CXX
 SWIG_PYTHON
-AM_PATH_PYTHON(2.6)
+AM_PATH_PYTHON(2.7)
 
 AC_CONFIG_FILES([Makefile src/Makefile pyext/Makefile])
 

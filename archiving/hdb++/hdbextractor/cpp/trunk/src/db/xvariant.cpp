@@ -585,23 +585,20 @@ void XVariant::add(const char* readval, const char* writeval, size_t index)
     {
         char *endptr = NULL;
 
-        printf("RW: index %d readval %s write val %s\n", index, readval, writeval);
+    //    printf("RW: index %d readval %s write val %s\n", index, readval, writeval);
         if(d->dataInfo->type == Double)
         {
-            long double val;
+            double val;
             if(readval == NULL)
                 val = nan("NaN");
             else
-            {
-                val = strtold(readval, &endptr);
-                printf("\e[1;33mstrtozabbulang %s: -> got %Le\e[0m\n", readval, val);
-            }
+                val = strtod(readval, &endptr);
 
             double wval;
             if(writeval == NULL)
                 wval = nan("NaN");
             else
-                wval = strtold(writeval, &endptr);
+                wval = strtod(writeval, &endptr);
             if(errno != 0 && (val == 0 || wval == 0) )
             {
                 mMakeError(errno);
@@ -612,7 +609,7 @@ void XVariant::add(const char* readval, const char* writeval, size_t index)
                 dval[index] = val;
                 dval = (double *) d->w_val;
                 dval[index] = wval;
-                printf("added %Le - %Le as r and w\n", val, wval);
+//                printf("added %f - %f as r and w\n", val, wval);
             }
         }
         else if(d->dataInfo->type == Int)

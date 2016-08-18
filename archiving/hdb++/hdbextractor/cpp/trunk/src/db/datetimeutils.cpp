@@ -19,13 +19,19 @@ time_t DateTimeUtils::toTime_t(const char* timestamp_str) const
 
 struct timeval DateTimeUtils::toTimeval(const char* timestamp_str) const
 {
-    struct tm mtm;
+   // struct tm mtm;
     struct timeval tv;
-    memset(&mtm, 0, sizeof(struct tm));
-    strptime(timestamp_str, "%Y-%m-%d %H:%M:%S", &mtm);
+    time_t t;
+    struct tm *mtm;
+    t = time(NULL);
+    mtm = localtime(&t);
+    // memset(&mtm, 0, sizeof(struct tm));
+    // mtm.tm_isdst = 1;
+
+    strptime(timestamp_str, "%Y-%m-%d %H:%M:%S", mtm);
     /* get usecs if specified */
     tv.tv_usec = 0;
-    tv.tv_sec = mktime(&mtm);
+    tv.tv_sec = mktime(mtm);
     return tv;
 }
 
