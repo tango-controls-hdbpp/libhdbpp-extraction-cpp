@@ -67,4 +67,11 @@ INSTALLATION INSTRUCTIONS FOR the Hdbextractor++ library
 
       will make a directory with the files to distribute (without compression)
 
+   POSSIBLE PROBLEMS:
 
+   *   Some autotools require AC_CONFIG_MACRO_DIR instead of AC_CONFIG_MACRO_DIRS:
+       AC_CONFIG_MACRO_DIR([m4])
+       # AC_CONFIG_MACRO_DIRS([m4])
+
+   *   configure can detect Python installation but make can't find Python.h include file:
+       - open pyext/Makefile.am and add  -I/usr/include/python2.6 (or whatever) to INCLUDEDIRS directive
