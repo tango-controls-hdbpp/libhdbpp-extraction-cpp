@@ -93,7 +93,8 @@ db/xvariantdatainfo.h
 libhdbextractor___la_CXXFLAGS = -I$(top_srcdir)/src -I$(top_srcdir)/src/db \
     -I$(top_srcdir)/src/mysql -I$(top_srcdir)/src/hdbpp \
     -I$(top_srcdir)/src/utils -I$(top_srcdir)/src/utils/private \
-    -I$(top_srcdir)/src/.. -I$(top_srcdir)/src/db/helpers
+    -I$(top_srcdir)/src/.. -I$(top_srcdir)/src/db/helpers \
+    -I/usr/local/include -I/usr/include
 
 # libhdbextractor___la_LDFLAGS = -version-info $(HDBX_VERSION)
 

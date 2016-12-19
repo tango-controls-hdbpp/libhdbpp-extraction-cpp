@@ -1,6 +1,6 @@
 #include "configurationparser.h"
 #include <errno.h>
-#include <stdio.h>
+#include <cstdio>
 #include <string.h>
 #include <stdlib.h>
 #include "hdbxmacros.h"

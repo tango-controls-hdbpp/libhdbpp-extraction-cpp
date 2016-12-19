@@ -3,6 +3,7 @@
 
 #define MAXERRORLEN 128
 
+#define _WITH_GETLINE // freebsd complains without this
 #include <map>
 #include <string>
 
