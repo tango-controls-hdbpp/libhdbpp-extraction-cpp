@@ -2,6 +2,7 @@
 #define MYSQLCONNECTION_H
 
 #include <connection.h>
+#include <mysql/mysql.h>
 
 class MySqlResult;
 

@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.60])
-AC_INIT([hdbextractor], [0.94.0], [giacomo.strangolino@elettra.trieste.it])
+AC_INIT([hdbextractor], [0.95.0], [giacomo.strangolino@elettra.trieste.it])
 AC_CONFIG_SRCDIR([src/hdbpp/mysqlhdbppschema.h])
 
 
@@ -17,12 +17,12 @@ AC_CONFIG_SRCDIR([src/hdbpp/mysqlhdbppschema.h])
 
 # Here are a set of rules to help you update your library version information:
 
-AC_SUBST([HDBX_VERSION], [0:94:0])
+AC_SUBST([HDBX_VERSION], [0:95:0])
 
 ##
 ## Actually, we use revision in src/Makefile.am
 ##
-AC_SUBST([HDBX_REVISION], [0.94.0])
+AC_SUBST([HDBX_REVISION], [0.95.0])
 
 # AC_CONFIG_HEADERS([config.h])
 

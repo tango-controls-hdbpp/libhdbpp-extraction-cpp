@@ -44,10 +44,10 @@ class Hdbximpl(HdbExtractorListener):
 
     def extractData(self):
         ret = self.ex.get(self.valuelist)[1]
-        print("extractData: got" , ret);
-        print("______ VALUELIST _____")
+#        print("extractData: got" , ret);
+#        print("______ VALUELIST _____")
         self.valuelist = ret
-        print(self.valuelist)
+#        print(self.valuelist)
 
     def getValueList(self):
         return self.valuelist
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     hdbximpl.getData(sources, d1, d2);
 
     valuelist = hdbximpl.getValueList();
-    print(valuelist)
+#    print(valuelist)
     print("There are " + str(len(valuelist)) + " datas");
 
     siever = DataSiever()

@@ -1,8 +1,6 @@
 #ifndef CONNECTION_H
 #define CONNECTION_H
 
-#include <mysql/mysql.h>
-
 class Result;
 class XVariant;
 

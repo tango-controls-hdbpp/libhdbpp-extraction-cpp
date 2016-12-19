@@ -14,11 +14,13 @@
 
 void XVariant::cleanup()
 {
+    printf("cleanup IN %s / %s %p\n", getSource(), getTimestamp(), this);
     if(d->mSize > 0 && d->dataInfo->type == String && d->val != NULL)
     {
         char **ssi = (char **) d->val;
         for(size_t i = 0; i < d->mSize; i++)
         {
+            printf("\e[1;31mdeleting %d of %d %s\e[0m\n", i, d->mSize, ssi[i]);
             char *si = (char *) ssi[i];
             delete si;
         }
@@ -28,20 +30,22 @@ void XVariant::cleanup()
 
     if(d->mSize > 0 && d->dataInfo->type == String && d->w_val != NULL)
     {
-        char **ssi = (char **) d->val;
+        char **ssi = (char **) d->w_val;
         for(size_t i = 0; i < d->mSize; i++)
         {
+            printf("\e[0;31mdeleting %d of %d %s (write) \e[0m\n", i, d->mSize, ssi[i]);
             char *si = (char *) ssi[i];
-            delete si;
+           delete si;
         }
     }
-    delete_wdata();
+   delete_wdata();
 
     if(d->mError)
         delete d->mError;
 
     delete d;
     d = NULL;
+    printf("cleanup OUT\n");
 }
 
 XVariant::~XVariant()
@@ -136,7 +140,9 @@ XVariant::XVariant(const char * source,
 {
     d = new XVariantPrivate(); /* allocates XVariantDataInfo */
     d->dataInfo->writable = wri;
+    printf("chaimo init_common\n");
     init_common(source, timestamp, df, dt);
+    printf("chiamo init_data con size %d\n", size);
     init_data(size);
 }
 
@@ -185,8 +191,8 @@ void XVariant::build_from(const XVariant& other)
     d->mIsWNull = other.isWNull();
     d->mQuality = other.getQuality();
 
-    //    printf("\e[0;36mXVariant %p copy from %p this->d: %p: format %d wri %d size %ld\e[0m \n", this, &other, d,
-    //           d->dataInfo->dataFormat, d->dataInfo->writable, d->mSize);
+        printf("\e[0;36mXVariant %p copy from %p this->d: %p: format %d wri %d size %ld\e[0m \n", this, &other, d,
+               d->dataInfo->format, d->dataInfo->writable, d->mSize);
 
     if(d->dataInfo->writable == WritableInvalid || d->dataInfo->type == TypeInvalid ||
             d->dataInfo->format == FormatInvalid)
@@ -232,6 +238,26 @@ void XVariant::build_from(const XVariant& other)
                 vb[i] = other.toBoolP()[i];
             d->val = vb;
         }
+        else if(d->dataInfo->type == XVariant::String)
+        {
+            char *other_s;
+            char **str = new char *[d->mSize];
+            size_t len;
+            for(size_t i = 0; i < d->mSize; i++)
+            {
+                other_s = other.toCharP()[i];
+                if(other_s != NULL)
+                {
+                    len = strlen(other_s);
+                    str[i] = new char[len + 1];
+                    memset(str[i], 0, sizeof(char) * (len + 1));
+                    strncpy(str[i], other_s, len);
+                }
+                else
+                    str[i] = NULL;
+            }
+            d->val = str;
+        }
     }
 
     /* write part */
@@ -264,6 +290,26 @@ void XVariant::build_from(const XVariant& other)
             for(size_t i = 0; i < d->mSize; i++)
                 vb[i] = other.toBoolP(false)[i];
             d->w_val = vb;
+        }
+        else if(d->dataInfo->type == XVariant::String)
+        {
+            char **str_w = new char *[d->mSize];
+            char *other_s;
+            size_t len;
+            for(size_t i = 0; i < d->mSize; i++)
+            {
+                other_s = other.toCharP(false)[i];
+                if(other_s != NULL)
+                {
+                    len = strlen(other_s);
+                    str_w[i] = new char[len + 1];
+                    memset(str_w[i], 0, sizeof(char) * (len + 1));
+                    strncpy(str_w[i], other_s, len);
+                }
+                else
+                    str_w[i] = NULL;
+            }
+            d->w_val = str_w;
         }
     }
 }
@@ -530,6 +576,28 @@ void XVariant::add(const char* readval, size_t index)
                 bval[index] = booval;
             }
         }
+        else if(d->dataInfo->type == String)
+        {
+            char **str_array;
+            int len = -1;
+            if(readval != NULL)
+                len = strlen(readval);
+            if(d->dataInfo->writable == XVariant::RO)
+                str_array = (char **) d->val;
+            else
+                str_array = (char **) d->w_val;
+
+            if(str_array[index] != NULL)
+                delete str_array[index];
+            if(len > -1)
+            {
+                str_array[index] = new char[len + 1];
+                memset(str_array[index], 0, len + 1);
+                strncpy(str_array[index], readval, len);
+            }
+            else
+                str_array[index] = NULL;
+        }
     }
     if(errno != 0)
         d->mIsValid = false;
@@ -567,6 +635,8 @@ void XVariant::add(const char* readval, const char* writeval, size_t index)
     if(writeval != NULL && index < d->mSize)
         d->mIsWNull = false;
 
+    printf("\e[1;32mXVariant.add: adding %s %s, index %ld\e[0m\n", readval, writeval, index);
+
     if(readval == NULL && index < d->mSize)
     {
         d->mNullIndexes = (unsigned int * ) realloc(d->mNullIndexes, sizeof(unsigned int) * d->mNullValuesCount + 1);
@@ -585,7 +655,7 @@ void XVariant::add(const char* readval, const char* writeval, size_t index)
     {
         char *endptr = NULL;
 
-    //    printf("RW: index %d readval %s write val %s\n", index, readval, writeval);
+        printf("RW: index %d readval %s write val %s\n", index, readval, writeval);
         if(d->dataInfo->type == Double)
         {
             double val;
@@ -685,6 +755,45 @@ void XVariant::add(const char* readval, const char* writeval, size_t index)
                 bval[index] = wbooval;
             }
         }
+        else if(d->dataInfo->type == String)
+        {
+            int len = -1;
+            if(readval != NULL)
+                len = strlen(readval);
+
+            printf("QUI DENTRO add tupo string\e[0m\n");
+            char ** r_str_array   = (char **) d->val;
+
+            if(r_str_array[index] != NULL)
+            {
+                printf("\e[1;31mdeleting %p [%p]\e[0m\n",  r_str_array, r_str_array[index]);
+                delete r_str_array[index];
+            }
+            if(len > -1)
+            {
+                r_str_array[index] = new char[len + 1];
+                memset(r_str_array[index], 0, len + 1);
+                strncpy(r_str_array[index], readval, len);
+            }
+            else
+                r_str_array[index] = NULL;
+
+            len = -1;
+            char **w_str_array = (char **) d->w_val;
+            if(writeval != NULL)
+                len = strlen(writeval);
+
+            if(w_str_array[index] != NULL)
+                delete w_str_array[index];
+            if(len > -1)
+            {
+                w_str_array[index] = new char[len + 1];
+                memset(w_str_array[index], 0, len + 1);
+                strncpy(w_str_array[index], writeval, len);
+            }
+            else
+                w_str_array[index] = NULL;
+        }
     }
     if(errno != 0)
         d->mIsValid = false;
@@ -736,9 +845,11 @@ void XVariant::parse(const char *s)
         }
         else if(d->dataInfo->type == String)
         {
-            char *c = new char[strlen(s) + 1];
-            strncpy(c, s, strlen(s) + 1);
-            d->val = c;
+            char **c_array = new char *[1];
+            c_array[0] = new char(strlen(s) + 1);
+            memset(c_array, 0, strlen(s) + 1);
+            strncpy(c_array[0], s, strlen(s));
+            d->val = c_array;
             d->mSize = 1;
         }
         else
@@ -819,11 +930,23 @@ void XVariant::parse(const char *s)
         }
         else if(d->dataInfo->type == String)
         {
-
+            size_t l, i = 0;
+            char **s_array = new  char* [d->mSize];
+            val = strtok_r(copy, delim, &saveptr);
+            while(val != NULL && errno == 0 && i < d->mSize)
+            {
+                  l = strlen(val);
+                  s_array[i] = new char[l + 1];
+                  memset(s_array[i], 0, l + 1);
+                  strncpy(s_array[i], val, l);
+                  val = strtok_r(NULL, delim, &saveptr);
+                  i++;
+            }
+            d->val = s_array;
         }
 
         /* delete the copy of the string */
-        delete copy;
+        delete[] copy;
     }
 
     /* Check for errors */
@@ -915,13 +1038,24 @@ void XVariant::parse(const char *sr, const char *sw)
         }
         else if(d->dataInfo->type == String)
         {
+            int l;
             if(!d->mIsNull)
             {
-
+                char **s = new  char*[1];
+                l = strlen(sr);
+                s[0] = new char[l + 1];
+                memset(s, 0, l + 1);
+                strncpy(s[0], sr, l);
+                d->val = s;
             }
             if(!d->mIsWNull)
             {
-
+                char **ws = new  char*[1];
+                l = strlen(sw);
+                ws[0] = new char[l + 1];
+                memset(ws, 0, l + 1);
+                strncpy(ws[0], sr, l);
+                d->w_val = ws;
             }
             d->mSize = 1;
         }
@@ -1009,7 +1143,19 @@ void XVariant::parse(const char *sr, const char *sw)
             }
             else if(d->dataInfo->type == String)
             {
-
+                size_t l, i = 0;
+                char **s_array = new  char*[d->mSize];
+                val = strtok_r(copy, delim, &saveptr);
+                while(val != NULL && errno == 0 && i < d->mSize)
+                {
+                      l = strlen(val);
+                      s_array[i] = new char[l + 1];
+                      memset(s_array[i], 0, l + 1);
+                      strncpy(s_array[i], val, l);
+                      val = strtok_r(NULL, delim, &saveptr);
+                      i++;
+                }
+                d->val = s_array;
             }
 
             /* delete the copy of the string */
@@ -1094,7 +1240,19 @@ void XVariant::parse(const char *sr, const char *sw)
                 }
                 else if(d->dataInfo->type == String)
                 {
-
+                    size_t l, i = 0;
+                    char **ws_array = new  char*[d->mSize];
+                    val = strtok_r(copy, delim, &saveptr);
+                    while(val != NULL && errno == 0 && i < d->mSize)
+                    {
+                          l = strlen(val);
+                          ws_array[i] = new char[l + 1];
+                          memset(ws_array[i], 0, l + 1);
+                          strncpy(ws_array[i], val, l);
+                          val = strtok_r(NULL, delim, &saveptr);
+                          i++;
+                    }
+                    d->w_val = ws_array;
                 }
             } /* if(wri_size == d->mSize) */
             else
@@ -1104,7 +1262,7 @@ void XVariant::parse(const char *sr, const char *sw)
             }
 
             /* delete the copy of the string */
-            delete copy;
+            delete[] copy;
 
         } /* !d->mIsWNull */
 
@@ -1193,9 +1351,19 @@ void XVariant::init_data(size_t size)
     else if(d->dataInfo->type == String)
     {
         if(wri == RW ||wri == RO)
-            d->val = (char *) new char[size];
+        {
+            char **s_arr =  new char*[size];
+            for(int i = 0; i < size; i++)
+                s_arr[i] = NULL;
+            d->val = s_arr;
+        }
         if(wri == RW || wri == WO)
-            d->w_val = (char *) new char[size];
+        {
+            char **w_s_arr = new char *[size];
+            for(int i = 0; i < size; i++)
+                w_s_arr[i] = NULL;
+            d->w_val = w_s_arr;
+        }
     }
 }
 
@@ -1763,10 +1931,20 @@ std::string XVariant::convertToString(bool read, bool *ok)
         }
         else if(d->dataInfo->type == String)
         {
-            if(read && (d->dataInfo->writable == XVariant::RW || d->dataInfo->writable == XVariant::RO) && d->val != NULL)
-                ret += std::string(((char **) d->val)[i]);
-            else if(!read && (d->dataInfo->writable == XVariant::RW || d->dataInfo->writable == XVariant::WO) && d->w_val != NULL)
+            if(read && (d->dataInfo->writable == XVariant::RW || d->dataInfo->writable == XVariant::RO) && d->val != NULL
+                    && static_cast<char **>(d->val)[i] != NULL)
+            {
+                char **v = (char **) d->val;
+                printf("\e[1;31merror: %s valid %d null %d\e[0m\n", this->getError(), this->isNull(), this->isValid());
+               printf("\e[1;34mTYPE STRING read d->val %p %s\e[0m\n", d->val, v[i]);
+               ret += std::string(((char **) d->val)[i]);
+            }
+            else if(!read && (d->dataInfo->writable == XVariant::RW || d->dataInfo->writable == XVariant::WO)
+                    && d->w_val != NULL && static_cast<char **>(d->w_val)[i] != NULL)
+            {
+                printf("\e[1;34mTYPE STRING WRITE d->val %p \e[0m\n", d->w_val);
                 ret += std::string(((char **) d->w_val)[i]);
+            }
         }
         else if(ok != NULL)
         {
@@ -1775,7 +1953,8 @@ std::string XVariant::convertToString(bool read, bool *ok)
             mMakeError(err);
         }
 
-        ret = std::string(tmp);
+        if(d->dataInfo->type != String)
+            ret = std::string(tmp);
         if(i < siz - 1 && ret.length() > 0)
             ret += std::string(",");
     }
