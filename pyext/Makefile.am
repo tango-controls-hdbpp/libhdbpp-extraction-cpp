@@ -6,7 +6,7 @@ SWIG_SOURCES =  hdbextractor_global.i
 INCLUDEDIRS = -I$(top_srcdir)/src -I$(top_srcdir)/src/db \
 		      -I$(top_srcdir)/src/hdb -I$(top_srcdir)/src/hdbpp -I$(top_srcdir)/src/utils \
                       -I$(top_srcdir)/src/mysql -I$(top_srcdir)/src/db/helpers \
-                      -I/usr/local/include -I/usr/include
+                      -I/usr/local/include -I/usr/include -I/usr/include/python2.6
 
 
 pkgpython_PYTHON = hdbextractor.py 
